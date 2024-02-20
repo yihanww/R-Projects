@@ -1,0 +1,288 @@
+---
+title: "Programming Exercises"
+author: "Yihan Wang"
+output: md_document
+---
+
+### Load necessary libraries
+
+```{r}
+library(tidyverse)
+library(purrr)
+```
+
+### Question 1. Compute the number of unique values in each column of the `iris` dataset. Write code that solves this task using: a `for` loop, `map()`, and `across()`. Make sure to pre-allocate your output.
+
+The iris data set contains 150 observations for three species (setosa, virginica, versicolor) and four features measured for each sample. These quantify the variations of the iris flower in its three species, all measurements given in centimeters.
+
+Load and check `iris` data (included in the tidyverse)
+
+```{r}
+
+data(iris)
+
+```
+
+Using a `for` loop
+
+```{r}
+
+# Pre-allocate
+unique_counts_forloop <- numeric(ncol(iris))
+
+# Loop through columns
+for (i in 1:ncol(iris)) {
+  unique_counts_forloop[i] <- length(unique(iris[, i]))
+}
+
+print(unique_counts_forloop)
+
+```
+
+Using a `map` function
+
+```{r}
+
+# Pre-allocate (though map_int inherently does this)
+unique_counts_map <- integer(ncol(iris))
+
+# Use map to count unique values
+unique_counts_map <- map_int(iris, ~ length(unique(.)))
+
+print(unique_counts_map)
+
+```
+
+Using `across`
+
+```{r}
+
+# Use across within summarise
+unique_counts_across <- iris %>%
+  summarise(across(everything(), ~ length(unique(.))))
+
+print(unique_counts_across)
+
+```
+
+
+### Question 2. Calculate the square of each element in the given vector `v` using a `for` loop and `map()`. Make sure to pre-allocate your output.
+
+```{r}
+v <- seq(from = 20, to = 1)
+v
+```
+
+Using a `for` loop
+
+```{r}
+
+# Pre-allocate
+square_forloop <- numeric(length(v))
+
+# Loop through the vector and square each element
+for (i in 1:length(v)) {
+  square_forloop[i] <- v[i]^2
+}
+
+print(square_forloop)
+
+```
+
+Using a `map` function
+
+```{r}
+
+library(purrr)
+
+# Pre-allocate (though map_dbl inherently does this)
+square_map <- double(length(v))
+
+# Use map to square each element
+square_map <- map_dbl(v, ~ .^2)
+
+print(square_map)
+
+
+```
+
+
+### Question 3. Calculate the square of all elements in the given matrix `m` using `for` loops and `apply()`. Check the documentation for `apply()`. Make sure to pre-allocate your output.
+
+```{r}
+m <- matrix(c(1:16), nrow = 4, ncol = 4, byrow = TRUE)
+```
+
+Using nested `for` loops
+
+```{r}
+
+# Pre-allocate a matrix
+m_square_forloop <- matrix(0, nrow=4, ncol=4)  
+
+# Loop through each element in the matrix's row and column
+for (i in 1:nrow(m)) {
+  for (j in 1:ncol(m)) {
+    m_square_forloop[i, j] <- m[i, j]^2
+  }
+}
+
+print(m_square_forloop)
+
+```
+
+
+Using one `for` loop
+
+```{r}
+# Pre-allocate
+m_square_forloop1 <- matrix(0, nrow = 4, ncol = 4, byrow = TRUE)
+elements_length <- length(m)
+
+# Loop through each element in the matrix via length
+for (i in 1:elements_length) {
+  m_square_forloop1[i] <- m[i]^2
+}
+print(m_square_forloop1)
+
+```
+
+
+Using `apply` (check the documentation by typing "apply" in the search box of the Help tab, or by typing `help(apply)` in the console)
+
+```{r}
+
+m_square_apply <- apply(m, MARGIN=c(1, 2), function(x) x^2)
+
+print(m_square_apply)
+
+```
+
+
+### Question 4. Write a function that takes two numbers and calculates the sum of the squared value of them, e.g. 2^2 + 3^2 should equal 13. Call the function with a couple of examples.
+
+```{r}
+sum <- function(x,y) {
+  return(x^2 + y^2)
+}
+
+sum_example1 <- sum(4,5)
+sum_exmaple2 <- sum(99,36)
+sum_example3<- sum(67,83)
+
+print(sum_example1)
+print(sum_exmaple2)
+print(sum_example3)
+
+```
+
+
+### Question 5. Write code to calculate the length of sides in a right-triangle using the Pythagorean Theorem. You need to use if-else statements to complete this question. 
+
+Your tasks:
+
+- set up your triangle sides, call them a, b, c, and give them values 3, 4, NULL
+- check how many sides you have provided values for, and for each evaluation print a message. If you provided the lengths of only one side or all three sides, the printed message should warn you to provide value for two sides only
+- perform the calculations applying the Pythagorean Theorem
+
+```{r}
+
+# Set up triangle sides
+a <- 3
+b <- 4
+c <- NULL
+
+# Count the number of provided sides
+sides_provided <- length(c(a,b,c))
+
+# Print the number of provided sides
+if (sides_provided == 1) {
+  cat("You have provided values for only one side. Values for two sides needed.\n")
+} else if (sides_provided == 3) {
+  cat("You have provided values for all three sides. Please provide values for two sides only.\n")
+} else {
+  cat("Input of two sides received. The third side value is calculating......\n")
+
+# Apply the Pythagorean Theorem
+  if (is.null(c)) {
+    c <- sqrt(a^2 + b^2)
+    cat("The length of side c is:", c, "\n")
+  } else if (is.null(b)) {
+    b <- sqrt(c^2 - a^2)
+    cat("The length of side b is:", b, "\n")
+  } else if (is.null(a)) {
+    a <- sqrt(c^2 - b^2)
+    cat("The length of side a is:", a, "\n")
+  }
+}
+
+
+```
+
+
+### Question 6. Rewrite your code from the previous question as a function (e.g., write a function to calculate the length of sides in a right-triangle using the Pythagorean Theorem) and add some additional checks. Call the function with some examples.
+
+Your tasks:
+
+- set up your triangle sides as function parameters
+- the function should be flexible: the function works if the user gives it values for two sides, but they can be either a and b, or b and c, or a and c
+- if the user only provides the length of one side, the function should throw an error with stop()
+- if the user provides the lengths of all three sides, the function should throw an error with stop()
+- if the user provides any values other than numeric values, the function should throw an error with stop()
+- perform the calculations applying the Pythagorean Theorem
+- call the function with a few examples, include also examples in which the function should throw an error
+
+```{r}
+
+# Set up triangle sides as function parameters to apply Pythagorean Theorem 
+phthagorean <- function (a = NULL, b = NULL, c = NULL) {
+  # Computes the third line's value of a right-angled triangle 
+  # Args: 
+  #   a,b,c : stands for each line of a triangle
+  # Returns"
+  #   The function calculates the value of a third line and print it out with strings
+  sides_provided <- length(c(a, b, c))
+  if (sides_provided == 1){
+    stop("You have provided values for only one side. Values for two sides needed.\n")}
+  else if (sides_provided == 3) {
+    stop("You have provided values for all three sides. Please provide values for two sides only.\n")}
+  else if (!is.numeric(sides_provided)){
+    stop("Please provide with numeric values only. \n")}
+  else {if (is.null(c)) {
+    c <- sqrt(a^2 + b^2)
+    cat("The length of side c is:", c, "\n")
+  }   
+    else if (is.null(b)) {
+      b <- sqrt(c^2 - a^2)
+      cat("The length of side b is:", b, "\n")
+    }   
+    else if (is.null(a)) {
+      a <- sqrt(c^2 - b^2)
+      cat("The length of side a is:", a, "\n")
+    }
+  }
+}
+
+phthagorean_example1 <- phthagorean(5, 12)
+phthagorean_example2 <- phthagorean(30, NULL, 50)
+phthagorean_example3 <- phthagorean(NULL, 44, 55)
+
+```
+
+
+### Reflections
+
+Provide 1-2 paragraphs of reflections on what was hard/easy about this homework, problems you solved and how you solved them, helpful resources, etc. 
+
+Please, list the first and last name of eventual collaborators with whom you worked to complete this assignment and explain what each did.
+
+This assignment took me much less time to finish compared to the last one HW03. However, there are still some minor issues that kept troubling me. First, I find it trouble to print the result of questions5 because it combines texts and the output numbers. Thus, I googled on how to present strings and numeric values, and ofund cat() function really helpful. The second problem I faced is how to check if the inut number is valid in question6. I first tried to evaluate each input with the .is.numeric() function and found it not working if i check each valu eof a,b,and c one by one (is.numeric(a)|is.numeric(b)|is.numeric(c)) with warning messages. Therefore, I went to TA Monica's office hour, and Monica suggested me that instead of checking each value of a/b/c, I can treat them as a whole like I did in question5, so I solved question6. 
+
+Collab: TA-Monica Ruiz
+
+### Session info
+
+```{r}
+# don't modify this code chunk
+sessioninfo::session_info()
+```

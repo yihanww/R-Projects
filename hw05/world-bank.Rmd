@@ -1,0 +1,170 @@
+---
+title: "Part 2: Working with functions and tidyr with social science data"
+author: "Yihan Wang"
+output: md_document
+---
+
+## Overview
+
+The World Bank publishes extensive socioeconomic data on countries and economies worldwide. In the `data_world_bank` folder included in this assignment, there are all the World Bank’s `csv` data files with economic indicators for each country (https://data.worldbank.org/indicator). Each `csv` file contains data on a given country economy's data.
+
+Your tasks are two:
+
+1. Write  a function that imports a data file (one single data file) and renames some of the columns in each data file. Remember to document your function. Then call the function to import all files. Finally, show how to call the function both with a for loop and with map
+2. Tidy the imported data
+
+
+## Load necessary libraries 
+
+```{r}
+library(tidyverse)
+library(purrr)
+
+```
+
+
+## Task 1
+
+#### Write a function that imports the data files and renames columns
+
+* Your function should import a SINGLE data file and take one single argument: the file path to the data file. We suggest using a relative path. Given this path, the function should import the data, rename a few variables (see next bullet point), and return the renamed data as output.
+* Your function should rename the following four variables "Country Name", "Country Code", "Indicator Name", "Indicator Code" as `country`, `country_code`, `indicator`, `indicator_code`. Please note the original variables use non-syntactic names (see slides on this)
+* Before writing your function: inspect a few of the `csv` files to familiarize yourself with the data. A couple of suggestions: when you import the data you want to skip the first four rows and drop row 67 (which gives problems)
+* Make sure to document your function properly
+
+```{r import-function}
+
+import_and_rename <- function(filepath){
+  # Import datafiles and rename some columns  
+  # Args: 
+  #   filepath : stands for each name of the file importing
+  # Returns
+  #   The datafile imported with changed columns 
+  datafile <- read_csv(filepath, skip = 4) %>% 
+  subset(select = -67) %>%
+    rename( 
+      "country" = "Country Name", 
+      "country_code" = "Country Code", 
+      "indicator" = "Indicator Name", 
+      "indicator_code" = "Indicator Code"
+    )
+  return(datafile)
+}
+
+```
+
+
+#### Call the function to import all data files 
+
+Once you are sure your function works as expected to import one SINGLE data file, you want to use it to import all data files. To do so:
+
+* First, create a list with the names of all data files using the `dir()` function (see the function documentation for more), with the following three arguments: 
+   * `path`: we recommend using a relative path (this is shorter, relative means relative to your working directory) rather than an absolute path (longer, more prone to errors); see Chapter 8 of R for Data Science for more detailed instructions
+   * `pattern`: use a regular expression pattern that matches the `csv` extension of your files 
+   * `full.names`: set this to `TRUE`
+   
+* Second, import all data files using your function; show how to do this in two ways: using a `for loop` and `map()`. Notice these are several files, it might take a while (up to 2-3 minutes) for R to import them, especially with the loop. Make sure that your final result is a dataframe (not a list or anything else).
+
+
+```{r get-economies}
+
+list <- dir(
+  path = "data_world_bank",            
+  pattern = "\\.csv$",  
+  full.names = TRUE    
+)
+
+print(list[1:5])
+
+```
+
+
+```{r import-loop, message = FALSE, warning = FALSE}
+
+# Pre-allocate a list
+alldata <- list()
+
+# Loop over file paths, import and rename them into a new list
+for (i in seq_along(list)) {
+  alldata[[i]] <- import_and_rename(list[[i]])
+}
+
+# Combine list into a data frame
+alldata_df <- bind_rows(alldata) %>% 
+  drop_na() 
+
+```
+
+
+```{r import-map, message=FALSE,warning = FALSE}
+
+# Import all data files using map
+alldata_dfMap <- map_dfr(list, import_and_rename) %>% 
+  drop_na() 
+
+```
+
+
+## Task 2 
+
+Tidy the imported data using the principles of tidy data: each variable must have its own column, each observation must have its own row, each value must have its own cell. Before writing any code, take some time to envision how you want your data to look like once tidy. Add a few sentences (using Markdown language) to explain what you did and why the resulting data frame is tidy.
+
+
+```{r tidy-data, message = FALSE, warning = FALSE}
+tidydata <- pivot_longer(alldata_df,
+    cols = -c("country", "country_code", "indicator","indicator_code"),
+    names_to = "year", 
+    values_to = "value") 
+ 
+```
+
+To tidy the data, I used pivot_longer because the originally data frame have multiple columns representing the years, which makes the data frame extremely wide horizontally. I want to make the years appear in order in one column. Thus, I take all the columns representing years and transfer the name into "year", and make each value accompanied that year into a cell.
+
+## Bonus/Extra
+
+These are some (optional) tasks/ideas to consider if you aim at "Excellent" on "Achievement" (Other ideas: welcome! Completing one of these two options is not the only way to show your mastery of the material required for this assignment; we provide them to offer some guidance, but feel free to explore other options if you would like to).
+
+* Option 1: after you write the code for tidying the imported data (and you have ensured it works as expected), put it into a function, and call it with the data. 
+* Option 2: use ggplot2 to produce a graph that explores the relationship between two variables of your choice in the data (make sure to label the graph, etc.), then briefly describe the plotted data. To familiarize with the world bank indicators, consult the data documentation: https://data.worldbank.org/indicator
+
+```{r option1}
+
+tidy <- function(filepath){
+  # Import and rename datafile, then tidy it
+  # Args: 
+  #   filepath : stands for each name of the file importing
+  # Returns
+  #   The tidy datafile 
+  tidyfile <- import_and_rename(filepath) %>% 
+  pivot_longer(
+    cols = c(starts_with("19") | starts_with("20")),
+    names_to = "year", 
+    values_to = "value") %>%
+    drop_na(value)
+  return(tidyfile)
+}
+
+tidy_example1 <- tidy("data_world_bank/API_ABW_DS2_en_csv_v2_4346306.csv")
+
+```
+
+
+## Session info
+
+```{r session-info}
+sessioninfo::session_info()
+```
+
+
+## Reflections
+
+Provide 1-2 paragraphs of reflections on what was hard/easy about this homework (part 1, debugging; and part 2, working with world bank data), problems you solved and how, helpful resources you consulted, and what you plan to further improve based on this homework, etc. 
+
+Please, list the first and last name of eventual collaborators with whom you worked to complete this assignment and explain what each did.
+
+For part1, question4, I struggled a little with removing the warning message "returning NA." I originally intended to use "na.rm" to directly remove NA values, but this did not work. So I read carefully about the warning message and found it is caused because non-numeric values in the "applicants" dateset, and this can cause warning because strings or logical values cannot be calculated their mean. Therefore, Monica suggested me to filter out these kinds of values with an if statement. 
+
+For part2, I think this part is harder than part1, especially with the for loop question in Task1. The question requires us to merge all imported data to form a big dataframe. However, I struggled on how to loop a list with full file names and make into a data frame. I googled and found that function "bind_rows" can make this happen, so I preallocate a list contained all the files' names, and start loop, and finally convert the output into a dataframe. 
+
+Also, I met troubles on commit and push to Github because I have divergent directories to resolve. After I tried and failed "git fetch," "git push origin main," and so on, in my Terminal, I went to Ram for help, and finally Ram helped me solve this with "git reset --hard origin/main." 
+

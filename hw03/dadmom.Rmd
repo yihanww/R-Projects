@@ -1,0 +1,76 @@
+---
+title: "Tidying `dadmom`"
+author: "Yihan Wang"
+output: md_document
+---
+
+## Get data
+
+```{r}
+# don't modify this chunk 
+
+library(tidyverse)
+library(rcis)
+
+data("dadmom")
+dadmom
+
+# hints: 
+## we tested code that uses a combination of pivot_longer() and pivot_wider(); or a combination of separate(), pivot_longer(), and unite(); or only pivot_longer(). Is does not mean these are the only options to solve this question, but something to consider.
+## if you use pivot_longer() and you supply multiple names to names_to, you must also supply a names_sep. Otherwise break the operation into multiple steps. If you use pivot_longer() and you get an error related to your datatype (e.g. can't combine character and double) use values_transform = as.character to simplify everything to character columns.
+```
+
+## Explain
+
+Add a few sentences here to explain why the given data frame is not tidy. Briefly describe the approach you take to tidy it.
+
+Explain: The original dataset has multiple observations per row, containing dad and mom, along with their incomes in one row. However, a tidy dataset should one have one observation per row, it should only contains one single parent's data (familyid, his/her parent role, name, and income).
+
+
+## Tidy data
+
+```{r}
+# write here your code to tidy the data, store your tidied data as dadmom_tidy
+dadmom_tidy <- 
+  pivot_longer(
+    data = dadmom, 
+    cols = -famid, 
+    names_to = c(".value", "parent"), 
+    names_pattern = "(name|inc)(.)"
+  )
+  
+# print the contents
+dadmom_tidy
+```
+
+
+## Plot data
+
+```{r}
+# DO NOT modify this code chunk: just run it. 
+# if you tided the data correctly in the previous step, it should just work. 
+# parent: m or d
+# inc: individual income
+# famid: family ID
+
+ggplot(data = dadmom_tidy, mapping = aes(x = parent, y = inc)) +
+  geom_point() +
+  geom_line(mapping = aes(group = famid)) +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(
+    title = "Gender parity and household income",
+    subtitle = "Each line identifies a distinct family",
+    x = "Mom or Dad",
+    y = "Income",
+  ) +
+  theme_minimal()
+```
+
+
+## Session info
+
+```{r}
+# don't modify this code chunk
+sessioninfo::session_info()
+```
+

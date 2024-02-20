@@ -1,0 +1,218 @@
+---
+title: "Exploring Mass Shootings in America Re-submission"
+author: "Yihan Wang"
+output: github_document
+---
+
+## See README.md for Re-submission details
+
+## Get the data
+```{r, echo = TRUE}
+ 
+#Get necessary libraries
+library(tidyverse)  
+library(ggplot2)
+library(knitr)      
+library(rcis)
+
+# load the data
+data("mass_shootings")
+mass_shootings
+```
+
+## Specific questions
+### 1. Generate a data frame that summarizes the number of mass shootings per year. Print the data frame as a formatted `kable()` table.
+
+```{r message = FALSE}
+
+case_peryear = mass_shootings %>%
+  group_by(year) %>%
+  summarise(frequency = n())
+
+kable(x =case_peryear, 
+      col.names = c("Year","Number of mass shootings"),
+      caption = "Mass Shootings in the United States (1982-2021)")
+
+```
+
+
+### 2. Generate a bar chart that identifies the number of mass shooters associated with each race category. The bars should be sorted from highest to lowest.
+
+```{r barplot_Case_per_Race, message=FALSE}
+
+#Number of mass shooters by race barplot
+
+shooters_race <- mass_shootings %>%
+  group_by(race) %>%
+  drop_na(race) %>%
+  summarise(numbers = n())
+
+ggplot(data = shooters_race, 
+       mapping = aes(reorder(race,-numbers), numbers)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  ggtitle("Mass Shootings in the United States (1982-2021)") +
+  labs(x = "Race of Perpetrator", 
+       y = "Number of Cases")
+
+```
+
+
+### 3. Generate a boxplot visualizing the number of total victims, by type of location. Then, redraw the same plot, but remove the Las Vegas Strip massacre from the dataset.
+
+```{r boxplot_Victims_LocationType, message=FALSE}
+
+#Number of total victims by type of location boxplot
+
+ggplot(mass_shootings, aes(x = location_type, 
+                           y = total_victims)) +
+  geom_boxplot(fill = "green") +
+  ggtitle("Mass Shootings in the United States (1982-2021)") +
+  labs(x = "Type of Location", 
+       y = "Total Number of Victims")
+
+```
+
+```{r boxplot_Victims_LocationWithoutLas, message=FALSE}
+
+# Number of total victims, removing Las Vegas Strip massacre boxplot
+
+rm_las <- mass_shootings %>% 
+  filter(!row_number() %in% c(35))
+
+ggplot(rm_las, aes(x = location_type, 
+                   y = total_victims))+
+  geom_boxplot(fill = "yellow")+
+  ggtitle("Mass Shootings in the United States (1982-2021)")+
+  labs(x = "Type of Location", 
+       y = "Total Number of Victims",
+       subtitle = "Omitting Las Vegas Strip massacre")
+
+```
+
+
+## More open-ended questions
+
+### 1. How many white males with prior signs of mental illness initiated a mass shooting after 2000?
+
+```{r}
+
+whitemales_mentalillness <-
+  filter(mass_shootings, 
+         prior_mental_illness == "Yes" & 
+           year > 2000 & 
+           race == "White" & 
+           male == TRUE, 
+         na.rm = TRUE) %>% 
+  nrow()
+
+print(whitemales_mentalillness)
+
+
+  
+```
+There are 22 white males with prior signs of mental illness initiated a case of mass shooting after 2000 as the result nrow() showed. 
+
+### 2. How does the distribution of mass shooting fatalities differ between White and Black shooters? What about White and Latino shooters?
+
+```{r Compare_Race, message=FALSE}
+
+race_compare <- filter(mass_shootings, 
+                       race == "White" | 
+                         race == "Black" | 
+                         race == "Latino")
+
+race_compare %>%
+  ggplot(aes(x = fatalities, 
+             color = race))+
+    geom_freqpoly()+
+    labs(title = "Mass Shootings in the United States (1982-2021)", 
+         x = "Number of Fatalities per Incidents", 
+         y = "Number of Incidents")
+                               
+```
+
+In general, white shooters cause more mass shooting cases compared to Black and Latino shooters as the line peaks, shown in the y axis. As the x axis is much longer for the White shooters' line, it proves that White shooters also tend to create more fatalities rate compare to the other two races as well. Also, in the cases with high fatalities, Latino shooters are involved, but they create less cases compared to White shooters. 
+
+## Open-ended question
+
+### 1. Are mass shootings with shooters suffering from mental illness different from mass shootings with no signs of mental illness in the shooter? Your graphs should assess the relationship between mental illness and total victims, between mentall illness and location type, and intersection of all three variables. Provide 1-2 brief paragraphs of written interpretation of your results. Graphs and/or tables alone will not be sufficient to answer this question.
+
+```{r Victims_MentalHealth, message=FALSE}
+
+#Relationship between total victims number & if shooters have prior mental illness or not
+
+rm_na_mentalillness <- mass_shootings %>%
+  na.omit(prior_mental_illnes)
+
+#boxplot1 <- ggplot(rm_na_mentalillness,
+       #aes(x = prior_mental_illness, 
+           #y = total_victims))+
+  #geom_boxplot(fill = c("green","red"))+
+  #ggtitle("Mass Shootings in the United States (1982-2021)")+
+  #labs(x = "Evidence of prior mental illness by perpetrator", 
+       #y = "Total Number of Victims")
+
+ggplot(rm_na_mentalillness, 
+       aes(x = prior_mental_illness, 
+           y = total_victims, 
+           fill = prior_mental_illness)) +
+  geom_bar(stat = "summary") +
+  scale_fill_manual(values = c("green", "red")) + 
+  ggtitle("Mass Shootings in the United States (1982-2021)") +
+  labs(x = "Evidence of prior mental illness by perpetrator", 
+       y = "Total Number of Victims")
+
+```
+
+```{r Victims_MentalHealth_LocationType, message=FALSE}
+
+#Numbers of total victims if shooters have prior mental illness by location type
+
+ mass_shootings %>%
+  filter(prior_mental_illness == "Yes") %>%
+  ggplot(aes(x = location_type, 
+             y = total_victims))+
+  geom_boxplot(fill = "purple")+
+  ylim(0,100)+
+  ggtitle("Mass Shootings in the United States (1982-2021)")+
+  labs(x = "Location Type", 
+       y = "Total Number of Victims")
+
+
+```
+
+```{r Intersection, message=FALSE}
+
+# The intersection of total victims numbers, shoots' mental illness, and location type
+
+rm_na_mentalillness <- mass_shootings %>%
+  na.omit(prior_mental_illnes)
+
+ggplot(rm_na_mentalillness,
+       aes(x = total_victims, 
+           y = location_type, 
+           fill = prior_mental_illness))+
+  geom_boxplot()+
+  ggtitle("Mass Shootings in the United States (1982-2021)")+
+  labs(x = "Total Number of Victims", 
+       y = "Location Type")
+
+```
+
+In the first boxplot comparing the number of total victims & shooters' mental health, we could tell that, in general, if the shooters have presented sign of mental illness, they tend to cause greater number of victims and larger scale of mass shooting, because of the outliers for "Yes" category have great number on the y-axis. If we look at the second plot, it shows that school is the prominent location to be chosen with higher level of total victims median, and shooters tend to cause more victims in school because the box for school have greater range. The third plot, where shows the intersection of the factors mentioned, we could see that mass shooting incidents are more likely to be caused by a shooter with mental illness because the blue color boxes, representing the shooters have mental illness, possess larger area compared to the orange color, representing the shooters have no mental illness regardless of location type.
+
+## Session info
+
+```{r, echo = TRUE}
+sessioninfo::session_info()
+```
+
+
+## Reflections
+
+Provide 1-2 paragraphs of reflections on what was hard/easy about this homework, problems you solved and how, helpful resources you consulted, something new you learned, etc. Please, list the first and last name of eventual collaborators with whom you worked with to complete this assignment.
+
+In this assignment, I met with several problems when generating the graph for open-ended question No.2, compare the distribution fatalities by race. I first filtered out the three races needed to compare and try to use geom_line() to create the line graph. However, I could not make the y axis to automatically count the cases by race. I googled how to create line charts by categories with no help. Therefore, I went to the office hour held by Monica, and she told me there is a function geom_freqploy() to accumulate the number in y-axis. For other problems I met, I always refer back to the slides on the website and ask google, for example, I googled how to remove NAs in the dataframe and how to add lables on x&y axises on the graph. Also, I consulted Ram on how to change the name of the plots generated in the mass-shootings_files.
+
+
+Collaboration with: TA-Monica Ruiz & TA-Ram Kripa in Office Hours

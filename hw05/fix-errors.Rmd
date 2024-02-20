@@ -1,0 +1,140 @@
+---
+title: "Part 1: Fix errors in code"
+author: "Yihan Wang"
+output: md_document
+---
+
+## Overview
+
+This script includes code to conduct analysis of baby name popularity in the United States using the `babynames` package. For info about the data, please see here: http://hadley.github.io/babynames/
+
+Each code chuck in this script includes some mistakes and currently does not work. Your task is to fix these mistakes to generate the desired output.
+
+
+## Load necessary libraries 
+
+If you are working on your local R studio, you might need to install the libraries before loading them (if you are working on Workbench, simply run the code below to load the libraries, no installation required).
+
+```{r}
+library(tidyverse)
+library(babynames)
+library(glue)
+```
+
+
+### 1. The code below should calculate the count of distinct names for each year in the `babynames` data, and plot them with a line graph. The code contains TWO errors. Find and fix them. Then briefly describe why each of the errors occurred.
+
+```{r distinct-names-error}
+
+# a random comment
+babynames %>%
+  group_by(year) %>%
+  summarize(name1 = n_distinct(name)) %>%
+  ggplot(mapping = (aes(x = year , y = name1))) +
+  geom_line() + 
+  labs(
+      title = "Disinct names over time",
+      x = "Year",
+      y = "Number of distinct names")
+
+```
+
+**Error1**\
+The original code use "+" instead of "%>%" after summarize function, which caused the error of "incompatible methods." This is because "+" is used to add layers or themes to the ggplot function, but what we should do here is to pass the output data created by summarize function to the ggplot function, so that "ggplot" can use the data after summarize to create the plot we need. Therefore, we should use "%>%" to pipe down the data in order to built the link between the data we need and the plot with "ggplot" function. 
+
+**Error2**\
+The correct plot used "Year" as the X-axis, and "number of distinctive names" as the Y-axis, but the original code used reversed X and Y. To make the plot correct, we should switch the values assigned to X and Y.  
+
+
+### 2. The code below writes a function to show trends over time for specific names using the `babynames` data. The code contains THREE errors. Find and fix them. Then briefly describe why each of the errors occurred. To spot one of the errors, familiarize yourself with the function `glue()` by reading its documentation
+
+```{r names-trends-error}
+
+name_trend <- function(person_name) {
+  babynames %>%
+    filter(name == person_name) %>%
+    ggplot(mapping = aes(x = year, y = n, color = sex)) + 
+    geom_line() +
+    labs(
+      title = glue("Name: {person_name}"),
+      x = "Year",
+      y = "Number of births"
+    ) +
+    theme_minimal()
+}
+
+# Call the function with a random name
+name_trend("Bob")
+
+```
+
+**Error1**\
+The function used "person_name" as the parameter, but inside the original function, "filter" function calls "p_name." The inconsistency will cause R cannot recognize the targeted object. Therefore, we need to change "p_name" into "person_name."
+
+**Error2**\
+The "filter" function should use double equal sign "==" to represent what we want to filter, but the original code used "=." Thus, we need to add an extra "=" sign.
+
+**Error3**\
+ The "glue()" functions needs to double quotation marks around the text (outside the brackets) we want to output, like glue("{output_text}"), so we need to add quotation marks to fix the original code.
+
+
+### 3. The code below should generate a line plot that displays total US births by sex and year using the `applicants` data. The code contains TWO errors. Find and fix them. Then briefly describe why each of the errors occurred.
+
+```{r birth-sex-year-error}
+
+applicants %>%
+  mutate(
+    sex = if_else(sex == "F", "Female", "Male"),
+  ) %>%
+  ggplot(mapping = aes(x = year, y = n_all, color = sex)) +
+  geom_line() +
+  labs(
+    title = "Total US births by sex and year",
+    x = "Year",
+    y = "Number of births",
+    caption = "Source: Social Security Administration"
+  ) +
+  theme_minimal()
+
+```
+
+**Error1**\
+The original code wants to create a new column changing the "F"/"M" representing gender of new born babies into more formal language "Female"/"Male." However, "select" function can only be applied on existing data frame for selecting. If we want to modify, we need to use "mutate" function. 
+
+**Error2**\
+When mapping variables in "ggplot," we do not need quotation marks to indicate which column we want to refer. Therefore, we should remove the quotation mark on color asthetic in the original code to correct the syntax. 
+
+### 4. The code below should calculate the mean for all variables in the `applicants` data frame using a `for loop`. It contains TWO errors and ONE warning. Find and fix them. Then briefly describe why each of the errors occurred.
+
+```{r mean-error}
+
+output <- vector(mode = "double" , length = length(applicants))
+output
+
+for (i in seq_along(applicants)) {
+  if(class(applicants[[i]]) %in% c('numeric', 'integer')){ 
+    output[i] <- mean(applicants[[i]])
+  }
+}
+
+output 
+```
+
+**Error1**\
+The first error showed "Error in `applicants[i]`:
+! Can't subset columns past the end.
+ℹ Locations 1880, 1880, 1881, …, 2017, and 2017 don't exist.
+ℹ There are only 3 columns." This is because the length in applicants[i] is not correctly accessed. Because "applicants" only have 3 columns, the i can only be looped with in three times. To correctly accessed the loop length, we need to add function "seq_along" when setting the for loop. 
+
+**Error2**\
+The second error that 'applicants' cannot be correctly accessed is because "applicants" is a list. To run a loop in list, we need double brackets around the i, but the original code only used one pair of brackets. 
+
+**Warning message**\
+Warning "returning NA" because 'applicants' includes non numeric values such as strings or logical values, to remove the warning, we need to filter out the non numeric values with a if statement. 
+
+
+## Session info
+
+```{r session-info}
+sessioninfo::session_info()
+```

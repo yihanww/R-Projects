@@ -1,0 +1,349 @@
+---
+title: "Exploring U.S. Supreme Court Decisions"
+author: "Yihan Wang"
+output: md_document
+---
+
+## Description of the data
+
+Before starting this homework, you must take some time to read the description of the data (posted on our website) to familiarize yourself with each source of data, the variables needed for this homework, and the documentation (online).
+
+
+## Get the data
+
+```{r}
+# load tidyverse package
+
+library(tidyverse)
+library(ggplot2)
+
+# load data with read_csv() you only need to modify the file argument
+
+case <- read_csv("/home/yihanwang/MACS30500-HW/hw03-yihanww/data/scdb-case.csv")
+vote <- read_csv("/home/yihanwang/MACS30500-HW/hw03-yihanww/data/scdb-vote.csv")
+
+# check the data
+
+data(case)
+data(vote)
+case
+vote
+
+```
+
+
+## Task 1: Recode variables
+
+Recode the following variables according to the instructions. You will be using the newly generated variables to answer the questions below. For each variable, show the total observations for each value before and after recoding:
+
+* `decisionDirection`: this variable takes four values (1 conservative, 2 liberal, 3 unspecifiable, and NA), as explained in the [documentation](http://scdb.wustl.edu/documentation.php?var=decisionDirection#norms). Recode it to take three values: 0,1,NA (0 conservative, 1 liberal, and NA as a sum of NA and unspecifiable)
+* `majority`: this variable takes two values (1 dissent, 2 majority), as explained in the [documentation](http://scdb.wustl.edu/documentation.php?var=majority). Recode it so dissent becomes 0 and majority becomes 1
+* `direction`: this variable takes two values (1 conservative, 2 liberal), as explained in the [documentation](http://scdb.wustl.edu/documentation.php?var=direction). Recode it so conservative becomes 0 and liberal becomes 1
+* convert the `chief` and `justiceName` variables to a factor (with chief and justice in chronological order); please notice, these variables are stored into two different data sources
+
+
+```{r}
+
+#decisionDirection: convert 1 to 0, convert 2 to 1, put 3&NA together as NA
+
+decisionDirection_original <- case %>% 
+  group_by(decisionDirection) %>% 
+  summarise(count = n())
+print(as_tibble(decisionDirection_original))
+
+decisionDirection_recode <- case %>% 
+  mutate(decisionDirection = case_when(
+    decisionDirection == 1 ~ 0, 
+    decisionDirection == 2 ~ 1, 
+    is.na(decisionDirection) | decisionDirection == 3 ~ NA
+    ))%>%
+  group_by(decisionDirection) %>% 
+  summarise(count = n())
+print(as_tibble(decisionDirection_recode))
+
+```
+
+```{r}
+
+#chief: variables to a factor in chief chronological order
+
+chief_original<- case$chief
+
+chief_recode <- as.factor(case$chief) %>% fct_inorder()
+
+```
+
+
+```{r}
+
+#majority: convert 1 to 0, convert 2 to 1
+
+majority_original <- vote %>% 
+  group_by(majority) %>% 
+  summarise(count = n())
+print(as_tibble(majority_original))
+
+majority_recode <- vote %>% 
+  mutate(majority = case_when(
+    majority == 1 ~ 0, 
+    majority == 2 ~ 1
+    ))%>%
+  group_by(majority)%>% 
+  summarise(count = n())
+print(as_tibble(majority_recode))
+
+```
+
+```{r}
+
+#direction: convert 1 to 0, convert 2 to 1
+
+direction_original <- vote %>% 
+  group_by(direction) %>% 
+  summarise(count = n())
+print(as_tibble(direction_original))
+
+direction_recode <- vote %>% 
+  mutate(direction = case_when(
+    direction == 1 ~ 0, 
+    direction == 2 ~ 1
+    ))%>%
+  group_by(direction)%>% 
+  summarise(count = n())
+print(as_tibble(direction_recode))
+
+```
+
+```{r}
+
+#justiceName: variables to a factor in justice chronological order
+
+justiceName_original <- vote$justiceName
+print(as_tibble(justiceName_original))
+
+
+justiceName_recode <- vote %>%
+  mutate(justiceName = fct_reorder(justiceName, justice))
+
+```
+
+
+## Task 2: Answer the following questions 
+
+For each question, provide 1-2 paragraphs of written interpretation of your results. Graphs and/or tables alone will not be sufficient to answer these questions. The interpretation should be descriptive (e.g., this graph shows x and y) and substantive (what do the results show, what can we infer or conclude from the graph, etc., see EDA lecture on this). Add your description as text, not as an R comment, and place it after your code and results.
+
+The first three questions are required, the fourth question is a bonus/optional question.
+
+
+#### 1. What percentage of cases in each term are decided by a one-vote margin (i.e. 5-4, 4-3, etc.)?
+
+```{r onevote_margin,}
+
+#define a logical column which says if a case is one-vote margin
+
+margin <- case %>% 
+  mutate(allmargin = majVotes-minVotes) %>% 
+  mutate(onevotemargin = ifelse(allmargin == 1,1,0)) 
+
+#calculate the mean of that column (equivalent to proportion of TRUEs)
+
+margin %>% group_by(term) %>% 
+  summarise(percentage = mean(onevotemargin, na.rm =TRUE)) %>% 
+  ggplot(mapping = aes(x = term, 
+                       y = percentage)) +  
+  geom_line(color = "blue")+
+  labs(x = "Term", 
+       y = "Percentage of total cases decided", 
+       title = "Percentage of US Supereme Court cases decided by one vote margin",
+       caption = "Source: US Supereme Court")+ 
+  theme_minimal()+
+  scale_y_continuous(labels = scales::percent)
+
+```
+
+Interpretation of onevote_margin: The trend of cases determined by one-vote margin have a peak in roughly around 1790s, before 1800, up to 50% at that time. Then the percentage of cases determined by one-vote margin droped to 0,  stayed low, and fluctuated mildly until roughlt 1940s, before 1950. After roughly 1945-1950, the percentage of cases determined by one vote margin began to fluctuated very often with a gradual trend of increase. In other words, there are lots of ups and downs for cases determined by one-vote margin since about 1945.  
+
+
+#### 2. How often the justices who are currently serving on the Supreme Court, have voted in the conservative direction in cases of criminal procedure, civil rights, economic activity, and federal taxation?
+* Select only the justices who are currently serving on the Supreme Court [see here](https://www.supremecourt.gov/about/biographies.aspx): John G. Roberts, Clarence Thomas, Samuel A. Alito, Sonia Sotomayor, Elena Kagan, Neil M. Gorsuch, Brett M. Kavanaugh, Amy Coney Barrett (Ketanji Brown Jackson is not in the data). 
+* Calculate how often they have voted in the conservative direction in cases involving criminal procedure, civil rights, economic activity, and federal taxation. 
+* Produce two graphs with your results: one faceted by justice, the other by issue area.
+
+```{r justice_plot,}
+
+#First, join the two data frames
+
+casevote2 <- left_join(case, vote, by = c("caseId", "docketId", "caseIssuesId", "term"))
+
+# Select the justices and issue areas according to given instructions
+
+current_justices <- c("JGRobert","CThomas", "SAAlito", 
+                      "SSotomayor" , "EKagan", "NMGorsuch", 
+                      "BMKavanaugh", "ACBarrett")
+
+current_issue <- c("1","2","8","12")
+
+current <- casevote2 %>% 
+  filter(justiceName %in% current_justices) %>% 
+  filter(issueArea %in% current_issue) 
+
+# Calculate votes in conservative direction
+
+percentage_current <- current %>% 
+  group_by(justiceName, issueArea) %>% 
+  summarise(per_cur = mean(direction == 1, na.rm = TRUE), .groups = "drop")
+
+# Plot the graph in the category of justice
+
+issue_area_text <- percentage_current %>% 
+  mutate(issueArea = case_when(
+    issueArea == 1 ~ "Criminal Procedure", 
+    issueArea == 2 ~ "Civil Rights",
+    issueArea == 8 ~ "Economic Activity",
+    issueArea == 12 ~ "Federal Taxation"))
+
+justice_plot <- ggplot(data = issue_area_text, 
+                       mapping = aes(x = issueArea, 
+                           y = per_cur, 
+                           fill = justiceName)) + 
+  geom_bar(stat = "identity") + 
+  facet_wrap(facets = vars(justiceName), 
+             scales = "fixed", 
+             drop = FALSE) +
+  labs(title = "U.S. Supreme Court", 
+       subtitle = "Percent of cases decided in a conservative direction", 
+       y = "Percent of votes cast", 
+       x = "Issue Area")+
+  ylim(0, 1)+
+  scale_y_continuous(labels = scales::percent)+ 
+  coord_flip() 
+print(justice_plot)
+
+```
+
+Interpretation of justice_plot: Among all the justices filtered as requirement, justice Amy Coney Barretttend to make the most conservative decision compared to other judges because the bar in his sub-plot looks longer than others, mainly over 75% of the cases he voted conservatively. Justice Sonia Sotomayor and Elena Kagan voted less conservatively than other justices because their bar looks shorter, primarily less than 50 %. Within specific issue area, Federal Taxation, justice Neil M. Gorsuch and Judge Amy Coney Barretttend both voted very conservatively, with their bar hits 100% as the graphs show.
+
+```{r issue_area_plot,}
+
+# Plot the graph in the category of issue area
+
+issue_area_plot <- ggplot(data = issue_area_text, 
+                          mapping = aes(x =justiceName, 
+                              y = per_cur, 
+                              fill = issueArea)) + 
+  geom_bar(stat = "identity") + 
+  facet_wrap(facets = vars(issueArea), 
+             scales = "fixed", 
+             drop = FALSE) +
+  labs(title = "U.S. Supreme Court", 
+       subtitle = "Percent of cases decided in a conservative direction", 
+       x = "Justice Name", 
+       y = "Percentage of Cases in Conservative Direction")+ 
+  ylim(0, 1.2) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("Civil Rights"="red", 
+                               "Criminal Procedure"="blue", 
+                               "Economic Activity"="green", 
+                               "Federal Taxation"="purple")) +
+  coord_flip() 
+print(issue_area_plot)
+
+```
+
+Interpretation of issue_area_plot:With issue area plot, we could see more clearly of the individual differences within one issue area. Especially with Fedral Taxation, the percentage of justices making conservative vote can vary from less than 20% up to 100%. The individual differences are smaller for Economic Activity since all of the justices make conservative votes around 50%-75% of the time in all cases.
+
+
+#### 3. For each term he served on the Court, in what percentage of cases was Justice Antonin Scalia in the majority?
+
+```{r AScalia,}
+
+# re-code majority
+
+majority_recode3 <- vote %>% 
+  mutate(majority = case_when(
+    majority == 1 ~ 0, 
+    majority == 2 ~ 1))
+
+# Select the AScalia areas according to given instructions
+
+AScalia <- majority_recode3 %>% filter(justiceName == "AScalia")
+
+# Calculate the percentage of AScalia in majority
+
+percentage_AScalia <- AScalia %>%
+  group_by(term) %>%
+  summarise(per = mean(majority, na.rm = TRUE))
+
+# Plot the graph of Ascalia
+
+ggplot(data = percentage_AScalia) +
+  geom_line(
+    mapping = aes(x = term, 
+                  y = per, 
+                  color = "red")) + 
+  labs(x = "Term", 
+       y = "Percent of total decisions", 
+       title = "Percentage of the time Scalia was in the majority",
+       caption = "Source: US Supereme Court") + 
+  theme_minimal() + 
+  scale_y_continuous(labels = scales::percent)
+
+```
+Interpretation of AScalia_plot: From the plot, we could tell that justice A.Scalia was in majority for most cases, because the percentage on y-axis showed that the line stays above 70%, even if for the lowest point in around 2018 or 2019. In the year of 1992 or 1993, justice A. Scalia was in majority for most of the time, up to 90% plus. 
+
+#### 4. Optional/Bonus question. In each term, what percentage of cases were decided in the conservative direction? And in the liberal direction?  Use the recoded variable decisionDirection here.
+
+```{r conlib,}
+
+# re-code decisionDirection
+
+decisionDirection_recode4 <- case %>% 
+ mutate(decisionDirection = case_when(
+    decisionDirection == 1 ~ 0, 
+    decisionDirection == 2 ~ 1, 
+    is.na(decisionDirection) | decisionDirection == 3 ~ NA))
+
+# Calculate the percentage of cases were decided in the conservative & liberal direction
+
+percentage_conservative <- decisionDirection_recode4 %>%
+  group_by(term, decisionDirection) %>%
+  summarise(count = n()) %>% 
+  mutate(per_con = count/sum(count))
+
+percentage_conservative2 <- percentage_conservative %>% 
+  drop_na(decisionDirection)
+
+# Plot the graph of conservative & liberal graph
+
+ggplot(percentage_conservative2, aes(x = term, y = per_con)) +
+  geom_line(color = "green") + 
+  labs(x = "Term", 
+       y = "Percent of total decisions", 
+       title = "US Supreme Court", 
+       subtitle = "Percent of cases decided in a conservative direction (0) versus in a libral direction (1)", 
+       caption = "Source: US Supereme Court") + 
+  facet_grid(~ decisionDirection)+
+  theme_minimal()
+
+```
+
+Interpretation of conservative versus liberal plot: At the start of the court record before 1800, most cases are decided in a liberal direction until there was a sudden drop around 1800. However, even if the cases decided in each direction were fluctuating each term, the general trend for cases decided in liberal decision was constantly increasing until it dropped around 1975. After that in 1975, the cases decided in conservative direction started to increase. 
+
+
+## Session info
+
+```{r session-info}
+sessioninfo::session_info()
+```
+
+## Reflections
+
+Provide 1-2 paragraphs of reflections on what was hard/easy about this homework (part 1, e.g., the dadmom tidy data; and part 2), problems you solved and how, helpful resources you consulted, and what you plan to further improve based on this homework, etc. 
+
+Please, list the first and last name of eventual collaborators with whom you worked to complete this assignment and explain what each did.
+
+The first part of this assignment of tidying "dadmom" dataset did not take much time. However, I am extremely struggled with part 2 task 2, especially with the second question.At first, I only know hoe to filter out the dataset I need for the plot. However, when it comes to implement the plot, I feel struggled which layer comes first, so my classmate Will Tianqu Lu gave me the hint that I can group_by issueArea and justiceName at the same time, so that I can make the both filter appear in one plot at the same time. I also consulted google for minor changes and fixed small issues. For example, I did not know how to make percentage in to %, instead of decimal numbers, google first gave me the hint of using scale_y_continuous with wrong codes, I googled the correct way again and add the accurate line into my ggplot code. I also asked google on how can graphs with facet wrap share one y axis to save horizontal spaces and make graph clean, and it gave the hint of scale = "fixed."
+
+Also, I got the feedback from hw#2 when I am doing this assignment, which said that my plots lack creativity and customization, so this time, I add colors on the plot to make difference. 
+
+Collab with: Will Tianqu Lu, Jing Zhu, and I asked TA Monica Ruiz about the "JusticeName" question in Task1 during her Office Hour. 
